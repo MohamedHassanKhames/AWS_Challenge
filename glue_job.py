@@ -17,11 +17,11 @@ logger = glueContext.get_logger()
 # Just to specify only the added file as a part of the automation.
 source_s3_path =  "s3://" + args['nonPartitionedBucketName'] + "/" +args['fileName']
 target_s3_path =  "s3://" + args['partitionedBucketName'] 
-logger.info("========================hyeey==========")
+logger.info("==================================")
 logger.info("source_s3_path" + source_s3_path)
-logger.info("========================hyeey==========")
+logger.info("==================================")
 logger.info("target_s3_path" + target_s3_path)
-logger.info("========================hyeey==========")
+logger.info("==================================")
 
 AmazonS3_node1714317723195 = glueContext.create_dynamic_frame.from_options(format_options={"multiline": False}, 
                              connection_type="s3", format="json", connection_options={"paths": [source_s3_path], "recurse": True}, transformation_ctx="AmazonS3_node1714317723195")
