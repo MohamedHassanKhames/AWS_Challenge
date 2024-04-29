@@ -21,9 +21,10 @@ In this challenge, you’ll be ingesting data from an API of your choosing into 
   ![IMAGE_DESCRIPTION](https://images-for-aws-challenge.s3.amazonaws.com/1.png)
 - Enter stack name and the all required parameters - ***provided in the next section*** - as shown: 
   ![IMAGE_DESCRIPTION](https://images-for-aws-challenge.s3.amazonaws.com/2.png)
-- Provide the appropriate IAMRole for cloudfomration to run the stack and create the appropriate resources.
+- Provide the appropriate IAMRole for cloudfomration to run the stack and create the appropriate resources:
   ![IMAGE_DESCRIPTION](https://images-for-aws-challenge.s3.amazonaws.com/3.png)
 - Finally, acknowledge and sumbit.
+  
   ![IMAGE_DESCRIPTION](https://images-for-aws-challenge.s3.amazonaws.com/4.png)
 - Now you can check the created resources and the files being uploaded into your newly created buckets.  
      
