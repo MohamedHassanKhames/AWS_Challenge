@@ -30,8 +30,7 @@ In this challenge, you’ll be ingesting data from an API of your choosing into 
   
 #### Parameters 
 
-- **LambdaCodeS3Bucket**(only bucket name the one that you created before): This is the s3 bucket where you will upload all source code. 
-    - **Must be Unique**
+- **LambdaCodeS3Bucket**(only bucket name the one that you created before): This is the s3 bucket where you will upload all source code. **Must be Unique**
     - Examlpe: aws-challenge-ingestion-bucket-code
 - **GlueScriptS3Path**(The whole path): This is a complete link for glue_job.py script
     - Examlpe:   s3://aws-challenge-ingestion-bucket-code/glue_job.py
