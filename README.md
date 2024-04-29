@@ -3,7 +3,7 @@
 In this challenge, you’ll be ingesting data from an API of your choosing into AWS. The data should be ingested on a cadence that aligns to the frequency of changes in the data.    
 
 ### Assumptions
-- Assuming lambda functions zip and glue job code will  be stored in a S3 bucket
+- Assuming lambda functions zip and glue job code will be stored in a S3 bucket in the same account where you will test the cloudformation.
 - For better illustration of the partition process I choose 7 minutes as a frequencey period.
 - Partitioning will be based on datetime - Year/Month/Day/Hour/Minute, just for illustration purposes.
 - I've added the partitioning part as an event-based architecture, just for illustration. However, I know that it is not the best option and it should be created as a batch job for better performance and cost optmization.
