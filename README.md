@@ -30,14 +30,14 @@ In this challenge, you’ll be ingesting data from an API of your choosing into 
   
 #### Parameters 
 
-- **LambdaCodeS3Bucket** : This is the s3 bucket where you will upload all source code. 
+- **LambdaCodeS3Bucket**(only bucket name the one that you created before): This is the s3 bucket where you will upload all source code. 
     - **Must be Unique**
     - Examlpe: aws-challenge-ingestion-bucket-code
-- **GlueScriptS3Path** : This is a complete link for glue_job.py script
+- **GlueScriptS3Path**(The whole path): This is a complete link for glue_job.py script
     - Examlpe:   s3://aws-challenge-ingestion-bucket-code/glue_job.py
-- **LambdaAPICodeS3Key** : This is the zip file name for API lambda inside S3 bucket
+- **LambdaAPICodeS3Key**(Only file name) : This is the zip file name for API lambda inside S3 bucket
   -  Examlpe: lambda_function.zip
-- **LambdaGlueCodeS3Key** : This is the zip file name for Glue lambda inside S3 bucket
+- **LambdaGlueCodeS3Key**(Only file name) : This is the zip file name for Glue lambda inside S3 bucket
   -  Examlpe: lambda_glue.zip
 - **NonPartitionedS3BucketName** : This is the S3 Staging bucket "Non-partionined"
   -  Examlpe: aws-challenge-non-partitioned-bucket
