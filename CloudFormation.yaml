@@ -27,19 +27,19 @@ Resources:
   HourlyEventBridgeRule:
     Type: AWS::Events::Rule
     Properties:
-      #Description: " This is an hourly scheduled event bridge rule that will trigger weatherAPI lambda Function."
+      Description: " This is an hourly scheduled event bridge rule that will trigger weatherAPI lambda Function."
       EventBusName: default
-      Name: weather-api-rule-every-one-hour
-      ScheduleExpression: cron(*/3 * ? * * *)
+      Name: weather-api-rule-every-7-min
+      ScheduleExpression: cron(*/7 * ? * * *)
       State: ENABLED
       Targets:
         - Id: weather-api-rule-every-one-hour-id
           Arn: !GetAtt WeatherAPILambdaFunction.Arn
 
+#" This is a permission allowing EventBridge to invoke the weatherAPI lambda Function."  
   PermissionToInvokeLambdaFunction:
     Type: AWS::Lambda::Permission
     Properties:
-      #Description: " This is a permission allowing EventBridge to invoke the weatherAPI lambda Function."
       FunctionName: !Ref "LambdaAPIName"
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
@@ -49,7 +49,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Role: !GetAtt ExecutionRoleForAPILambda.Arn
-      #Description: "This is a lambda function to call weather API triggered by event rule."
+      Description: "This is a lambda function to call weather API triggered by event rule."
       Handler: lambda_function.lambda_handler
       Runtime: python3.12 
       FunctionName: !Ref "LambdaAPIName"
@@ -64,20 +64,19 @@ Resources:
       Environment:
         Variables:
           nonPartitionedS3Bucket: !Ref  "NonPartitionedS3BucketName"
-
-    #we need to create a secret here      ApiKEY: file.txt
  
+
+# "This is a log group for Weather API lambda function"
   LambdaAPILogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      #Description: "This is a log group for Weather API lambda function"
       LogGroupName: !Sub "/aws/lambda/${LambdaAPIName}"
    
       
   ExecutionRoleForAPILambda:
     Type: 'AWS::IAM::Role'
     Properties:
-      #Description: "This is an execution role for Weather API lambda allowing it to run the required tasks."
+      Description: "This is an execution role for Weather API lambda allowing it to run the required tasks."
       RoleName: !Sub "${LambdaAPIName}-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -116,16 +115,14 @@ Resources:
               Resource:
                 - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaAPIName}/*"
 
-  
+
+# "This is a S3 bucket which contains the output data coming from lambda function after calling the weather API."  
   NonPartitionedS3Bucket:
     Type: 'AWS::S3::Bucket' 
     DependsOn:
       - PermissionToInvokeLambdaGlueFunction
     Properties:
       BucketName:  !Sub "${NonPartitionedS3BucketName}"
-      #Description: "This is a S3 bucket which contains the output data coming from lambda function after calling the weather API. However, not partitioned!
-      #              As a plus, once an object is created, S3 notification event will trigger a new Lambda function to run a Glue partitioning Job.
-      #              However, I believe that it was better to run this job as a batch job on a daily basis for better performance but I did it this way as an event-based architecture."
       NotificationConfiguration:
         LambdaConfigurations:
           - Event: s3:ObjectCreated:*
@@ -136,10 +133,10 @@ Resources:
                 - Name: suffix
                   Value: .json
 
+# "This is a permission allowing S3 bucket to trigger another Lambda function."
   PermissionToInvokeLambdaGlueFunction:
     Type: AWS::Lambda::Permission
     Properties:
-      #Description: "This is a permission allowing S3 bucket to trigger another Lambda function."
       Action: "lambda:InvokeFunction"
       FunctionName: !GetAtt LambdaFunctionRunGlueJob.Arn
       Principal: "s3.amazonaws.com"
@@ -150,7 +147,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Role: !GetAtt ExecutionRoleForGlueLambda.Arn
-      #Description: "This is a lambda function to run a glue job on the newly added file to partition it."
+      Description: "This is a lambda function to run a glue job on the newly added file to partition it."
       Handler: lambda_glue.lambda_handler
       Runtime: python3.12 
       FunctionName: !Ref "LambdaGlueName"
@@ -166,17 +163,18 @@ Resources:
           LogFormat: JSON
           LogGroup: !Sub "/aws/lambda/${LambdaGlueName}" 
 
+# "This is a log group for lambda function which will run a glue job."
+
   LambdaGlueLogGroup:
     Type: "AWS::Logs::LogGroup"
     Properties:
-      #Description: "This is a log group for lambda function which will run a glue job."
       LogGroupName: !Sub "/aws/lambda/${LambdaGlueName}"
  
 
   ExecutionRoleForGlueLambda:
     Type: 'AWS::IAM::Role'
     Properties:
-      #Description: "This is an execution role for Lambda glue function allowing it to run the required tasks."
+      Description: "This is an execution role for Lambda glue function allowing it to run the required tasks."
       RoleName: !Sub "${LambdaGlueName}-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -223,18 +221,18 @@ Resources:
               Resource:
                 - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaGlueName}/*"    
 
+# "This is the final S3 bucket. A partitioned bucket by year/month/day/hour."
   PartitionedS3Bucket:
     Type: 'AWS::S3::Bucket' 
     Properties:
-      #Description: "This is the final S3 bucket. A partitioned bucket by year/month/day/hour."
       BucketName:  !Sub "${PartitionedS3BucketName}"
  
   GluePartitioningJob:
     Type: AWS::Glue::Job
     Properties:
-      #Description: "This is an ETL glue job to partition the data based on datetime. 
-      #              Input: newly created file / better the daily data as previously mentioned.
-      #              Output: Files partitioned in parquet format based on it's datetime. "
+      Description: "This is an ETL glue job to partition the data based on datetime. 
+                  Input: newly created file / better the daily data as previously mentioned.
+                  Output: Files partitioned in parquet format based on it's datetime. "
       Command:
         Name: glueetl
         ScriptLocation: !Sub "${GlueScriptS3Path}"
@@ -254,7 +252,7 @@ Resources:
   ExecutionRoleForGlueJob:
     Type: AWS::IAM::Role
     Properties:
-      #Description: "This is an execution role for Glue Job to run the required tasks."
+      Description: "This is an execution role for Glue Job to run the required tasks."
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
