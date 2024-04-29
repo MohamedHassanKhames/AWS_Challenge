@@ -32,21 +32,21 @@ In this challenge, you’ll be ingesting data from an API of your choosing into 
 #### Parameters 
 
 - **LambdaCodeS3Bucket** : This is the s3 bucket where you will upload all source code. **Must be Unique**
-    - Examlpe: aws-challenge-ingestion-bucket-code
+    - **Example**: aws-challenge-ingestion-bucket-code
 - **GlueScriptS3Path** : This is a complete link for glue_job.py script
-    - Examlpe:   s3://aws-challenge-ingestion-bucket-code/glue_job.py
+    - **Example**:   s3://aws-challenge-ingestion-bucket-code/glue_job.py
 - **LambdaAPICodeS3Key** : This is the zip file name for API lambda inside S3 bucket
-  -  Examlpe: lambda_function.zip
+  -  **Example**: lambda_function.zip
 - **LambdaGlueCodeS3Key** : This is the zip file name for Glue lambda inside S3 bucket
-  -  Examlpe: lambda_glue.zip
+  -  **Example**: lambda_glue.zip
 - **NonPartitionedS3BucketName** : This is the S3 Staging bucket "Non-partionined"
-  -  Examlpe: aws-challenge-non-partitioned-bucket
+  -  **Example**: aws-challenge-non-partitioned-bucket
 - **PartitionedS3BucketName** : This is the final target, the partitioned S3 bucket
-  - Examlpe: aws-challenge-partitioned-bucket
+  - **Example**: aws-challenge-partitioned-bucket
 - **LambdaAPIName** : This is the lambda function responisble for calling the weather API.
-  - Example: weatherAPI
+  - **Example**: weatherAPI
 - **LambdaGlueName** : This is the lambda function which will be notified by s3 and will initiate the glue job for partitioning.
-  - Example: glueLambda
+  - **Example**: glueLambda
 - **GlueJobNameP** : This is the glue job for partitioning the data.
-  - Example: glueJob
+  - **Example**: glueJob
 
