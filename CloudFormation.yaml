@@ -1,0 +1,277 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+    LambdaCodeS3Bucket:
+      Type: String
+    LambdaGlueCodeS3Key:
+      Type: String
+    LambdaAPICodeS3Key:
+      Type: String
+    LambdaAPIName:
+      Type: String
+    LambdaGlueName:
+      Type: String
+    GlueScriptS3Path:
+      Type: String
+    GlueJobNameP: 
+      Type: String
+    NonPartitionedS3BucketName:
+      Type: String 
+    PartitionedS3BucketName:
+      Type: String 
+       
+Description: >-
+  CloudFormation template to integrate EventBridge rule with Lambda
+
+Resources:
+
+  HourlyEventBridgeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      #Description: " This is an hourly scheduled event bridge rule that will trigger weatherAPI lambda Function."
+      EventBusName: default
+      Name: weather-api-rule-every-one-hour
+      ScheduleExpression: cron(*/3 * ? * * *)
+      State: ENABLED
+      Targets:
+        - Id: weather-api-rule-every-one-hour-id
+          Arn: !GetAtt WeatherAPILambdaFunction.Arn
+
+  PermissionToInvokeLambdaFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      #Description: " This is a permission allowing EventBridge to invoke the weatherAPI lambda Function."
+      FunctionName: !Ref "LambdaAPIName"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt HourlyEventBridgeRule.Arn
+
+  WeatherAPILambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt ExecutionRoleForAPILambda.Arn
+      #Description: "This is a lambda function to call weather API triggered by event rule."
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.12 
+      FunctionName: !Ref "LambdaAPIName"
+      Timeout: 30 
+      Code:         
+        S3Bucket: !Ref "LambdaCodeS3Bucket"
+        S3Key: !Ref "LambdaAPICodeS3Key"
+      LoggingConfig:
+          ApplicationLogLevel: INFO 
+          LogFormat: JSON
+          LogGroup: !Sub "/aws/lambda/${LambdaAPIName}"  
+      Environment:
+        Variables:
+          nonPartitionedS3Bucket: !Ref  "NonPartitionedS3BucketName"
+
+    #we need to create a secret here      ApiKEY: file.txt
+ 
+  LambdaAPILogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      #Description: "This is a log group for Weather API lambda function"
+      LogGroupName: !Sub "/aws/lambda/${LambdaAPIName}"
+   
+      
+  ExecutionRoleForAPILambda:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      #Description: "This is an execution role for Weather API lambda allowing it to run the required tasks."
+      RoleName: !Sub "${LambdaAPIName}-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: s3-access-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              Effect: Allow
+              Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:ListBucket
+              Resource:
+              - !Sub "arn:aws:s3:::${LambdaCodeS3Bucket}"
+              - !Sub "arn:aws:s3:::${LambdaCodeS3Bucket}/*"
+              - !Sub "arn:aws:s3:::${NonPartitionedS3BucketName}"
+              - !Sub "arn:aws:s3:::${NonPartitionedS3BucketName}/*"
+        - PolicyName: logging-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement: 
+              Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:CreateLogGroup
+                - logs:PutLogEvents
+              Resource:
+                - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaAPIName}/*"
+
+  
+  NonPartitionedS3Bucket:
+    Type: 'AWS::S3::Bucket' 
+    DependsOn:
+      - PermissionToInvokeLambdaGlueFunction
+    Properties:
+      BucketName:  !Sub "${NonPartitionedS3BucketName}"
+      #Description: "This is a S3 bucket which contains the output data coming from lambda function after calling the weather API. However, not partitioned!
+      #              As a plus, once an object is created, S3 notification event will trigger a new Lambda function to run a Glue partitioning Job.
+      #              However, I believe that it was better to run this job as a batch job on a daily basis for better performance but I did it this way as an event-based architecture."
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt LambdaFunctionRunGlueJob.Arn
+            Filter:
+              S3Key:
+                Rules:
+                - Name: suffix
+                  Value: .json
+
+  PermissionToInvokeLambdaGlueFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      #Description: "This is a permission allowing S3 bucket to trigger another Lambda function."
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt LambdaFunctionRunGlueJob.Arn
+      Principal: "s3.amazonaws.com"
+      SourceArn: !Sub 'arn:aws:s3:::${NonPartitionedS3BucketName}'
+      SourceAccount: !Ref AWS::AccountId
+
+  LambdaFunctionRunGlueJob:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt ExecutionRoleForGlueLambda.Arn
+      #Description: "This is a lambda function to run a glue job on the newly added file to partition it."
+      Handler: lambda_glue.lambda_handler
+      Runtime: python3.12 
+      FunctionName: !Ref "LambdaGlueName"
+      Timeout: 30 
+      Code:         
+        S3Bucket: !Ref "LambdaCodeS3Bucket"
+        S3Key: !Ref "LambdaGlueCodeS3Key"
+      Environment:
+        Variables:
+          glueJobName: !Ref "GlueJobNameP"
+      LoggingConfig:
+          ApplicationLogLevel: INFO 
+          LogFormat: JSON
+          LogGroup: !Sub "/aws/lambda/${LambdaGlueName}" 
+
+  LambdaGlueLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      #Description: "This is a log group for lambda function which will run a glue job."
+      LogGroupName: !Sub "/aws/lambda/${LambdaGlueName}"
+ 
+
+  ExecutionRoleForGlueLambda:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      #Description: "This is an execution role for Lambda glue function allowing it to run the required tasks."
+      RoleName: !Sub "${LambdaGlueName}-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: s3-access-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              Effect: Allow
+              Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:ListBucket
+              Resource:
+              - !Sub "arn:aws:s3:::${LambdaCodeS3Bucket}"
+              - !Sub "arn:aws:s3:::${LambdaCodeS3Bucket}/*"
+              - !Sub "arn:aws:s3:::${NonPartitionedS3BucketName}"
+              - !Sub "arn:aws:s3:::${NonPartitionedS3BucketName}/*"
+        - PolicyName: glue-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              Effect: Allow
+              Action:
+              - glue:*
+              Resource: "*"
+        - PolicyName: logging-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement: 
+              Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:CreateLogGroup
+                - logs:PutLogEvents
+              Resource:
+                - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaGlueName}/*"    
+
+  PartitionedS3Bucket:
+    Type: 'AWS::S3::Bucket' 
+    Properties:
+      #Description: "This is the final S3 bucket. A partitioned bucket by year/month/day/hour."
+      BucketName:  !Sub "${PartitionedS3BucketName}"
+ 
+  GluePartitioningJob:
+    Type: AWS::Glue::Job
+    Properties:
+      #Description: "This is an ETL glue job to partition the data based on datetime. 
+      #              Input: newly created file / better the daily data as previously mentioned.
+      #              Output: Files partitioned in parquet format based on it's datetime. "
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub "${GlueScriptS3Path}"
+      DefaultArguments:
+        "--extra-py-files" : "s3://aws-glue-studio-transforms-510798373988-prod-us-east-1/gs_common.py,s3://aws-glue-studio-transforms-510798373988-prod-us-east-1/gs_derived.py"
+        "--partitionedBucketName": !Sub "${PartitionedS3BucketName}"
+        "--nonPartitionedBucketName": !Sub "${NonPartitionedS3BucketName}"
+      ExecutionProperty:
+        MaxConcurrentRuns: 1
+      MaxRetries: 0
+      GlueVersion: 4.0
+      WorkerType: G.1X
+      NumberOfWorkers: 10
+      Name: !Sub "${GlueJobNameP}"
+      Role: !GetAtt ExecutionRoleForGlueJob.Arn
+
+  ExecutionRoleForGlueJob:
+    Type: AWS::IAM::Role
+    Properties:
+      #Description: "This is an execution role for Glue Job to run the required tasks."
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "glue.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: "root"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action: "*"
+                Resource: "*"
